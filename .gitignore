@@ -57,5 +57,4 @@ Thumbs.db
 
 # Application specific
 storage-data/
-bucket-metadata/
 *.tmp
