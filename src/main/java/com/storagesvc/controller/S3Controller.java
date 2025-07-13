@@ -47,7 +47,7 @@ public class S3Controller {
         return ResponseEntity.ok(result);
     }
 
-    @PutMapping({"/{bucketName}", "/{bucketName}/"})
+    @PutMapping({ "/{bucketName}", "/{bucketName}/" })
     public ResponseEntity<Void> createBucket(@PathVariable String bucketName) {
         if (storageService.bucketExists(bucketName)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).build();
@@ -57,7 +57,7 @@ public class S3Controller {
         return created ? ResponseEntity.ok().build() : ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    @DeleteMapping({"/{bucketName}", "/{bucketName}/"})
+    @DeleteMapping({ "/{bucketName}", "/{bucketName}/" })
     public ResponseEntity<Void> deleteBucket(@PathVariable String bucketName) {
         if (!storageService.bucketExists(bucketName)) {
             return ResponseEntity.notFound().build();
@@ -67,7 +67,7 @@ public class S3Controller {
         return deleted ? ResponseEntity.noContent().build() : ResponseEntity.status(HttpStatus.CONFLICT).build();
     }
 
-    @GetMapping(value = {"/{bucketName}", "/{bucketName}/"}, produces = MediaType.APPLICATION_XML_VALUE)
+    @GetMapping(value = { "/{bucketName}", "/{bucketName}/" }, produces = MediaType.APPLICATION_XML_VALUE)
     public ResponseEntity<ListBucketResult> listObjects(
             @PathVariable String bucketName,
             @RequestParam(required = false) String prefix,
