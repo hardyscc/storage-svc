@@ -185,6 +185,14 @@ public class S3Controller {
         return ResponseEntity.ok().headers(headers).build();
     }
 
+    @RequestMapping(value = { "/{bucketName}", "/{bucketName}/" }, method = RequestMethod.HEAD)
+    public ResponseEntity<Void> headBucket(@PathVariable String bucketName) {
+        if (!storageService.bucketExists(bucketName)) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok().build();
+    }
+
     private String extractKey(HttpServletRequest request, String bucketName) {
         String requestURI = request.getRequestURI();
         String contextPath = request.getContextPath();

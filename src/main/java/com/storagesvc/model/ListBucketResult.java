@@ -2,29 +2,29 @@ package com.storagesvc.model;
 
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
-@JacksonXmlRootElement(localName = "ListBucketResult")
+@JacksonXmlRootElement(localName = "ListBucketResult", namespace = "http://s3.amazonaws.com/doc/2006-03-01/")
 public class ListBucketResult {
 
-    @JsonProperty("Name")
+    @JacksonXmlProperty(localName = "Name")
     private String name;
 
-    @JsonProperty("Prefix")
+    @JacksonXmlProperty(localName = "Prefix")
     private String prefix;
 
-    @JsonProperty("Marker")
+    @JacksonXmlProperty(localName = "Marker")
     private String marker;
 
-    @JsonProperty("MaxKeys")
+    @JacksonXmlProperty(localName = "MaxKeys")
     private int maxKeys;
 
-    @JsonProperty("IsTruncated")
+    @JacksonXmlProperty(localName = "IsTruncated")
     private boolean isTruncated;
 
-    @JsonProperty("Contents")
+    @JacksonXmlProperty(localName = "Contents")
     @JacksonXmlElementWrapper(useWrapping = false)
     private List<S3Object> contents;
 

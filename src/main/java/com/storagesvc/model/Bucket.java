@@ -3,16 +3,16 @@ package com.storagesvc.model;
 import java.time.Instant;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
 @JacksonXmlRootElement(localName = "Bucket")
 public class Bucket {
 
-    @JsonProperty("Name")
+    @JacksonXmlProperty(localName = "Name")
     private String name;
 
-    @JsonProperty("CreationDate")
+    @JacksonXmlProperty(localName = "CreationDate")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private Instant creationDate;
 

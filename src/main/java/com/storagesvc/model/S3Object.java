@@ -3,26 +3,26 @@ package com.storagesvc.model;
 import java.time.Instant;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
 @JacksonXmlRootElement(localName = "Contents")
 public class S3Object {
 
-    @JsonProperty("Key")
+    @JacksonXmlProperty(localName = "Key")
     private String key;
 
-    @JsonProperty("LastModified")
+    @JacksonXmlProperty(localName = "LastModified")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     private Instant lastModified;
 
-    @JsonProperty("ETag")
+    @JacksonXmlProperty(localName = "ETag")
     private String etag;
 
-    @JsonProperty("Size")
+    @JacksonXmlProperty(localName = "Size")
     private long size;
 
-    @JsonProperty("StorageClass")
+    @JacksonXmlProperty(localName = "StorageClass")
     private String storageClass = "STANDARD";
 
     public S3Object() {

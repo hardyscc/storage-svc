@@ -2,17 +2,17 @@ package com.storagesvc.model;
 
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
 @JacksonXmlRootElement(localName = "ListAllMyBucketsResult")
 public class ListAllMyBucketsResult {
 
-    @JsonProperty("Owner")
+    @JacksonXmlProperty(localName = "Owner")
     private Owner owner;
 
-    @JsonProperty("Buckets")
+    @JacksonXmlProperty(localName = "Buckets")
     private BucketList buckets;
 
     public ListAllMyBucketsResult() {
@@ -37,10 +37,10 @@ public class ListAllMyBucketsResult {
     }
 
     public static class Owner {
-        @JsonProperty("ID")
+        @JacksonXmlProperty(localName = "ID")
         private String id = "minioadmin";
 
-        @JsonProperty("DisplayName")
+        @JacksonXmlProperty(localName = "DisplayName")
         private String displayName = "minioadmin";
 
         public String getId() {
@@ -61,7 +61,7 @@ public class ListAllMyBucketsResult {
     }
 
     public static class BucketList {
-        @JsonProperty("Bucket")
+        @JacksonXmlProperty(localName = "Bucket")
         @JacksonXmlElementWrapper(useWrapping = false)
         private List<Bucket> bucket;
 
