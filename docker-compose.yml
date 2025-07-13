@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  storage-svc:
+    build: .
+    ports:
+      - "9000:9000"
+    environment:
+      - STORAGE_ROOT_PATH=/app/storage-data
+      - STORAGE_BUCKET_METADATA_PATH=/app/bucket-metadata
+      - APP_ACCESS_KEY=minioadmin
+      - APP_SECRET_KEY=minioadmin
+    volumes:
+      - storage_data:/app/storage-data
+      - bucket_metadata:/app/bucket-metadata
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  storage_data:
+  bucket_metadata:
