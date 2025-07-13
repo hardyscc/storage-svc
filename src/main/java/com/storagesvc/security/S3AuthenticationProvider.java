@@ -1,7 +1,8 @@
 package com.storagesvc.security;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Component;
@@ -9,23 +10,51 @@ import org.springframework.stereotype.Component;
 @Component
 public class S3AuthenticationProvider implements AuthenticationProvider {
 
-    @Value("${app.access-key}")
-    private String validAccessKey;
+    @Autowired
+    private S3CredentialService credentialService;
 
-    @Value("${app.secret-key}")
-    private String validSecretKey;
+    @Autowired
+    private AwsSignatureValidator signatureValidator;
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
         if (authentication instanceof S3Authentication s3Auth) {
             String accessKey = s3Auth.getAccessKey();
 
-            // For simplified authentication, we'll accept the configured access key
-            // regardless of the secret key (since proper signature validation is complex)
-            if (validAccessKey.equals(accessKey)) {
-                s3Auth.setAuthenticated(true);
-                return s3Auth;
+            // Check if user exists
+            if (!credentialService.userExists(accessKey)) {
+                throw new BadCredentialsException("Invalid access key");
             }
+
+            // Get the secret key for this access key
+            String secretKey = credentialService.getSecretKey(accessKey);
+
+            // Validate the signature if we have signature details
+            if (s3Auth.getSignature() != null && s3Auth.getDateStamp() != null) {
+                boolean isValidSignature = signatureValidator.validateSignature(
+                        accessKey,
+                        secretKey,
+                        s3Auth.getSignature(),
+                        s3Auth.getDateStamp(),
+                        s3Auth.getRegion(),
+                        s3Auth.getService(),
+                        s3Auth.getSignedHeaders(),
+                        s3Auth.getRequest());
+
+                // Validate timestamp to prevent replay attacks
+                boolean isValidTimestamp = signatureValidator.isTimestampValid(s3Auth.getTimestamp());
+
+                if (!isValidSignature) {
+                    throw new BadCredentialsException("Signature does not match");
+                }
+
+                if (!isValidTimestamp) {
+                    throw new BadCredentialsException("Request timestamp is too old");
+                }
+            }
+
+            s3Auth.setAuthenticated(true);
+            return s3Auth;
         }
         return null;
     }

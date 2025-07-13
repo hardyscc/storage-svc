@@ -6,15 +6,47 @@ import java.util.Collections;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 public class S3Authentication implements Authentication {
 
     private final String accessKey;
     private final String secretKey;
+    private final String signature;
+    private final String dateStamp;
+    private final String region;
+    private final String service;
+    private final String signedHeaders;
+    private final HttpServletRequest request;
+    private final String timestamp;
     private boolean authenticated;
 
     public S3Authentication(String accessKey, String secretKey) {
         this.accessKey = accessKey;
         this.secretKey = secretKey;
+        this.signature = null;
+        this.dateStamp = null;
+        this.region = null;
+        this.service = null;
+        this.signedHeaders = null;
+        this.request = null;
+        this.timestamp = null;
+        this.authenticated = false;
+    }
+
+    public S3Authentication(String accessKey, String secretKey, String signature,
+            String dateStamp, String region, String service,
+            String signedHeaders, HttpServletRequest request,
+            String timestamp) {
+        this.accessKey = accessKey;
+        this.secretKey = secretKey;
+        this.signature = signature;
+        this.dateStamp = dateStamp;
+        this.region = region;
+        this.service = service;
+        this.signedHeaders = signedHeaders;
+        this.request = request;
+        this.timestamp = timestamp;
         this.authenticated = false;
     }
 
@@ -59,5 +91,33 @@ public class S3Authentication implements Authentication {
 
     public String getSecretKey() {
         return secretKey;
+    }
+
+    public String getSignature() {
+        return signature;
+    }
+
+    public String getDateStamp() {
+        return dateStamp;
+    }
+
+    public String getRegion() {
+        return region;
+    }
+
+    public String getService() {
+        return service;
+    }
+
+    public String getSignedHeaders() {
+        return signedHeaders;
+    }
+
+    public HttpServletRequest getRequest() {
+        return request;
+    }
+
+    public String getTimestamp() {
+        return timestamp;
     }
 }

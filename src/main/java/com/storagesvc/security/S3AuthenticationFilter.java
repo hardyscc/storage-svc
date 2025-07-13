@@ -75,9 +75,14 @@ public class S3AuthenticationFilter extends OncePerRequestFilter {
             String signedHeaders = matcher.group(6);
             String signature = matcher.group(7);
 
-            // For simplicity, we'll use a basic validation approach
-            // In production, you'd want to implement full AWS signature validation
-            return new S3Authentication(accessKey, ""); // We'll validate in the provider
+            // Get timestamp from X-Amz-Date header or Date header
+            String timestamp = request.getHeader("X-Amz-Date");
+            if (timestamp == null) {
+                timestamp = request.getHeader("Date");
+            }
+
+            return new S3Authentication(accessKey, "", signature, dateStamp, region,
+                    service, signedHeaders, request, timestamp);
         }
         return null;
     }
@@ -87,8 +92,8 @@ public class S3AuthenticationFilter extends OncePerRequestFilter {
         String[] parts = authorization.substring(4).split(":");
         if (parts.length == 2) {
             String accessKey = parts[0];
-            String signature = parts[1];
-            return new S3Authentication(accessKey, ""); // We'll validate in the provider
+            // For AWS v2, we'll use the simple constructor
+            return new S3Authentication(accessKey, "");
         }
         return null;
     }
