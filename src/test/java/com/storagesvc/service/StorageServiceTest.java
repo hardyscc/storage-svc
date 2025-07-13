@@ -29,7 +29,6 @@ class StorageServiceTest {
     void setUp() throws IOException {
         storageConfig = new StorageConfig();
         ReflectionTestUtils.setField(storageConfig, "rootPath", tempDir.toString());
-        ReflectionTestUtils.setField(storageConfig, "bucketMetadataPath", tempDir.resolve("metadata").toString());
 
         storageService = new StorageService(storageConfig);
 
@@ -43,9 +42,7 @@ class StorageServiceTest {
             File[] bucketDirs = rootDir.listFiles(File::isDirectory);
             if (bucketDirs != null) {
                 for (File bucketDir : bucketDirs) {
-                    if (!bucketDir.getName().equals("metadata")) {
-                        deleteDirectory(bucketDir);
-                    }
+                    deleteDirectory(bucketDir);
                 }
             }
         }

@@ -45,10 +45,7 @@ public class StorageService {
             return new ArrayList<>();
         }
 
-        String metadataPath = new File(storageConfig.getBucketMetadataPath()).getName();
-
         return Arrays.stream(bucketDirs)
-                .filter(dir -> !dir.getName().equals(metadataPath))
                 .map(dir -> new Bucket(dir.getName(), Instant.ofEpochMilli(dir.lastModified())))
                 .collect(Collectors.toList());
     }
