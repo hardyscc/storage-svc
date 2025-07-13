@@ -3,9 +3,10 @@ package com.storagesvc.model;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonRootName;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
-@JsonRootName("ListAllMyBucketsResult")
+@JacksonXmlRootElement(localName = "ListAllMyBucketsResult")
 public class ListAllMyBucketsResult {
 
     @JsonProperty("Owner")
@@ -61,6 +62,7 @@ public class ListAllMyBucketsResult {
 
     public static class BucketList {
         @JsonProperty("Bucket")
+        @JacksonXmlElementWrapper(useWrapping = false)
         private List<Bucket> bucket;
 
         public List<Bucket> getBucket() {

@@ -3,9 +3,10 @@ package com.storagesvc.model;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonRootName;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
-@JsonRootName("ListBucketResult")
+@JacksonXmlRootElement(localName = "ListBucketResult")
 public class ListBucketResult {
 
     @JsonProperty("Name")
@@ -24,6 +25,7 @@ public class ListBucketResult {
     private boolean isTruncated;
 
     @JsonProperty("Contents")
+    @JacksonXmlElementWrapper(useWrapping = false)
     private List<S3Object> contents;
 
     public ListBucketResult() {
