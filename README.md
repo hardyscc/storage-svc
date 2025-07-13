@@ -51,9 +51,42 @@ brew install minio/stable/mc
 wget https://dl.min.io/client/mc/release/linux-amd64/mc
 chmod +x mc
 sudo mv mc /usr/local/bin/
+
+# Or use the provided setup script
+./setup-minio-cli.sh
 ```
 
-### Configure MinIO Client
+### Automated Testing
+
+This project includes comprehensive test scripts for MinIO CLI:
+
+#### Quick Test
+
+```bash
+./quick-test-minio.sh
+```
+
+Performs basic operations to verify the service is working correctly.
+
+#### Comprehensive Test Suite
+
+```bash
+./test-minio-cli.sh
+```
+
+Runs a full test suite including:
+
+- Bucket operations (create, list, delete)
+- Object operations (upload, download, delete, metadata)
+- Nested folder structures
+- File integrity verification
+- Error handling
+- Performance testing with concurrent operations
+- Complete cleanup
+
+### Manual Testing
+
+#### Configure MinIO Client
 
 ```bash
 mc alias set local http://localhost:9000 minioadmin minioadmin

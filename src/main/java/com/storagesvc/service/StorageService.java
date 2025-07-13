@@ -25,6 +25,7 @@ import com.storagesvc.model.Delete;
 import com.storagesvc.model.DeleteResult;
 import com.storagesvc.model.ListBucketResult;
 import com.storagesvc.model.S3Object;
+import com.storagesvc.util.ChunkedTransferDecoder;
 
 @Service
 public class StorageService {
@@ -109,15 +110,26 @@ public class StorageService {
             throw new IOException("MD5 not available", e);
         }
 
+        // Check if the input stream is using AWS S3 chunked transfer encoding
+        InputStream actualInputStream = inputStream;
+        if (inputStream.markSupported() && ChunkedTransferDecoder.isChunkedTransferEncoding(inputStream)) {
+            actualInputStream = ChunkedTransferDecoder.decode(inputStream);
+        }
+
         try (FileOutputStream fos = new FileOutputStream(objectFile);
                 BufferedOutputStream bos = new BufferedOutputStream(fos)) {
 
             byte[] buffer = new byte[8192];
             int bytesRead;
 
-            while ((bytesRead = inputStream.read(buffer)) != -1) {
+            while ((bytesRead = actualInputStream.read(buffer)) != -1) {
                 bos.write(buffer, 0, bytesRead);
                 md5.update(buffer, 0, bytesRead);
+            }
+        } finally {
+            // Close the decoded stream if it's different from the original
+            if (actualInputStream != inputStream) {
+                actualInputStream.close();
             }
         }
 

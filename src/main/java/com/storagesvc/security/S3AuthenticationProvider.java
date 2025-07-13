@@ -29,6 +29,11 @@ public class S3AuthenticationProvider implements AuthenticationProvider {
             // Get the secret key for this access key
             String secretKey = credentialService.getSecretKey(accessKey);
 
+            // Validate timestamp to prevent replay attacks
+            if (s3Auth.getTimestamp() != null && !credentialService.isTimestampValid(s3Auth.getTimestamp())) {
+                throw new BadCredentialsException("Request timestamp is invalid or too old");
+            }
+
             // Validate the signature if we have signature details
             if (s3Auth.getSignature() != null && s3Auth.getDateStamp() != null) {
                 boolean isValidSignature = signatureValidator.validateSignature(

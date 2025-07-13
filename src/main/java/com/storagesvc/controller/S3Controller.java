@@ -1,5 +1,6 @@
 package com.storagesvc.controller;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Instant;
@@ -111,7 +112,11 @@ public class S3Controller {
 
         try (InputStream inputStream = request.getInputStream()) {
             long contentLength = request.getContentLengthLong();
-            String etag = storageService.putObject(bucketName, key, inputStream, contentLength);
+
+            // Wrap in BufferedInputStream to enable marking for chunked transfer detection
+            BufferedInputStream bufferedInputStream = new BufferedInputStream(inputStream);
+
+            String etag = storageService.putObject(bucketName, key, bufferedInputStream, contentLength);
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("ETag", etag);
