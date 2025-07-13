@@ -61,13 +61,65 @@ public class StorageService {
     public boolean deleteBucket(String bucketName) {
         File bucketDir = new File(storageConfig.getRootPath(), bucketName);
         if (bucketDir.exists() && bucketDir.isDirectory()) {
+            // First, recursively remove any empty directories
+            removeEmptyDirectoriesRecursively(bucketDir);
+
+            // List all remaining files and directories
             String[] files = bucketDir.list();
             if (files != null && files.length > 0) {
+                // Log what files are preventing deletion for debugging
+                System.out.println("Bucket deletion failed - remaining files: " + Arrays.toString(files));
                 return false; // Bucket not empty
             }
-            return bucketDir.delete();
+
+            // Try to delete the directory
+            boolean deleted = bucketDir.delete();
+            if (!deleted) {
+                // If normal deletion fails, try to ensure it's really empty and retry
+                try {
+                    Thread.sleep(100); // Brief pause for any file system timing issues
+                    removeEmptyDirectoriesRecursively(bucketDir);
+                    files = bucketDir.list();
+                    if (files == null || files.length == 0) {
+                        deleted = bucketDir.delete();
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            return deleted;
         }
         return false;
+    }
+
+    /**
+     * Recursively removes empty directories from a bucket directory.
+     * This method traverses the directory tree and removes empty directories
+     * from bottom to top (post-order traversal).
+     */
+    private void removeEmptyDirectoriesRecursively(File directory) {
+        if (!directory.exists() || !directory.isDirectory()) {
+            return;
+        }
+
+        File[] files = directory.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                if (file.isDirectory()) {
+                    // Recursively process subdirectories first
+                    removeEmptyDirectoriesRecursively(file);
+
+                    // Try to delete the directory if it's empty
+                    String[] contents = file.list();
+                    if (contents != null && contents.length == 0) {
+                        boolean deleted = file.delete();
+                        if (deleted) {
+                            System.out.println("Removed empty directory: " + file.getPath());
+                        }
+                    }
+                }
+            }
+        }
     }
 
     public boolean bucketExists(String bucketName) {
