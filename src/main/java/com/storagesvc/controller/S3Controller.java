@@ -110,6 +110,12 @@ public class S3Controller {
             return ResponseEntity.notFound().build();
         }
 
+        // Check if this is a copy operation (S3 copy uses x-amz-copy-source header)
+        String copySource = request.getHeader("x-amz-copy-source");
+        if (copySource != null) {
+            return handleCopyObject(bucketName, key, copySource, request, response);
+        }
+
         try (InputStream inputStream = request.getInputStream()) {
             long contentLength = request.getContentLengthLong();
 
@@ -246,5 +252,97 @@ public class S3Controller {
         }
 
         return key;
+    }
+
+    private ResponseEntity<Void> handleCopyObject(
+            String destBucketName,
+            String destKey,
+            String copySource,
+            HttpServletRequest request,
+            HttpServletResponse response) throws IOException {
+
+        logger.debug("Handling copy operation: source={}, dest={}/{}", copySource, destBucketName, destKey);
+
+        // Parse the copy source header (format: /bucket/key or /bucket/key with URL encoding)
+        if (copySource.startsWith("/")) {
+            copySource = copySource.substring(1); // Remove leading slash
+        }
+
+        // URL decode the copy source
+        try {
+            copySource = java.net.URLDecoder.decode(copySource, "UTF-8");
+        } catch (Exception e) {
+            logger.warn("Failed to URL decode copy source: {}", copySource, e);
+            return ResponseEntity.badRequest().build();
+        }
+
+        // Extract source bucket and key
+        int firstSlash = copySource.indexOf('/');
+        if (firstSlash == -1) {
+            logger.warn("Invalid copy source format: {}", copySource);
+            return ResponseEntity.badRequest().build();
+        }
+
+        String sourceBucketName = copySource.substring(0, firstSlash);
+        String sourceKey = copySource.substring(firstSlash + 1);
+
+        logger.debug("Parsed copy source: bucket={}, key={}", sourceBucketName, sourceKey);
+
+        // Validate source bucket and object exist
+        if (!storageService.bucketExists(sourceBucketName)) {
+            logger.warn("Source bucket does not exist: {}", sourceBucketName);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        if (!storageService.objectExists(sourceBucketName, sourceKey)) {
+            logger.warn("Source object does not exist: {}/{}", sourceBucketName, sourceKey);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        // Validate destination bucket exists
+        if (!storageService.bucketExists(destBucketName)) {
+            logger.warn("Destination bucket does not exist: {}", destBucketName);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        try {
+            // Perform the copy operation by reading from source and writing to destination
+            InputStream sourceInputStream = storageService.getObject(sourceBucketName, sourceKey);
+
+            // Get source object size
+            long contentLength = storageService.getObjectSize(sourceBucketName, sourceKey);
+
+            // Copy the object
+            String etag = storageService.putObject(destBucketName, destKey, sourceInputStream, contentLength);
+
+            // Close the source stream
+            sourceInputStream.close();
+
+            // Build response with ETag and other headers similar to S3
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("ETag", etag);
+            headers.set("x-amz-copy-source-version-id", "null"); // We don't support versioning
+
+            // Set copy result in response body (S3 returns XML with copy result)
+            String copyResultXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                    "<CopyObjectResult>\n" +
+                    "   <LastModified>" + Instant.now().toString() + "</LastModified>\n" +
+                    "   <ETag>" + etag + "</ETag>\n" +
+                    "</CopyObjectResult>";
+
+            response.setContentType("application/xml");
+            response.getWriter().write(copyResultXml);
+            response.getWriter().flush();
+
+            logger.debug("Copy operation completed successfully: {}/{} -> {}/{}",
+                    sourceBucketName, sourceKey, destBucketName, destKey);
+
+            return ResponseEntity.ok().headers(headers).build();
+
+        } catch (Exception e) {
+            logger.error("Copy operation failed: {}/{} -> {}/{}",
+                    sourceBucketName, sourceKey, destBucketName, destKey, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 }
