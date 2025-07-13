@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -13,13 +15,18 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.storagesvc.model.Bucket;
+import com.storagesvc.model.Delete;
+import com.storagesvc.model.DeleteResult;
 import com.storagesvc.model.ListAllMyBucketsResult;
 import com.storagesvc.model.ListBucketResult;
 import com.storagesvc.model.S3Object;
@@ -31,6 +38,7 @@ import jakarta.servlet.http.HttpServletResponse;
 @RestController
 public class S3Controller {
 
+    private static final Logger logger = LoggerFactory.getLogger(S3Controller.class);
     private final StorageService storageService;
 
     public S3Controller(StorageService storageService) {
@@ -191,6 +199,30 @@ public class S3Controller {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok().build();
+    }
+
+    // Bulk delete objects - S3 delete API
+    @PostMapping(value = { "/{bucketName}",
+            "/{bucketName}/" }, params = "delete", produces = MediaType.APPLICATION_XML_VALUE)
+    public ResponseEntity<DeleteResult> deleteObjects(
+            @PathVariable String bucketName,
+            @RequestBody String requestBody) {
+
+        if (!storageService.bucketExists(bucketName)) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Parse the XML manually
+        try {
+            XmlMapper xmlMapper = new XmlMapper();
+            Delete deleteRequest = xmlMapper.readValue(requestBody, Delete.class);
+
+            DeleteResult deleteResult = storageService.deleteObjects(bucketName, deleteRequest);
+            return ResponseEntity.ok(deleteResult);
+        } catch (Exception e) {
+            logger.error("Failed to parse delete request", e);
+            return ResponseEntity.badRequest().build();
+        }
     }
 
     private String extractKey(HttpServletRequest request, String bucketName) {

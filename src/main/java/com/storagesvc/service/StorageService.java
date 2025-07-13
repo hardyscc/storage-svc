@@ -21,6 +21,9 @@ import org.springframework.stereotype.Service;
 
 import com.storagesvc.config.StorageConfig;
 import com.storagesvc.model.Bucket;
+import com.storagesvc.model.Delete;
+import com.storagesvc.model.DeleteResult;
+import com.storagesvc.model.ListBucketResult;
 import com.storagesvc.model.S3Object;
 
 @Service
@@ -181,5 +184,41 @@ public class StorageService {
             return String.join("/", Arrays.copyOfRange(parts, 1, parts.length));
         }
         return "";
+    }
+
+    public DeleteResult deleteObjects(String bucketName, Delete deleteRequest) {
+        DeleteResult deleteResult = new DeleteResult();
+
+        for (Delete.ObjectIdentifier objectId : deleteRequest.getObjects()) {
+            String key = objectId.getKey();
+            boolean deleted = deleteObject(bucketName, key);
+
+            if (deleted) {
+                DeleteResult.DeletedObject deletedObject = new DeleteResult.DeletedObject();
+                deletedObject.setKey(key);
+                deleteResult.getDeleted().add(deletedObject);
+            } else {
+                // In S3, if an object doesn't exist, it's still considered successfully deleted
+                // unless there's a specific error
+                DeleteResult.DeletedObject deletedObject = new DeleteResult.DeletedObject();
+                deletedObject.setKey(key);
+                deleteResult.getDeleted().add(deletedObject);
+            }
+        }
+
+        return deleteResult;
+    }
+
+    public ListBucketResult listBucket(String bucketName, String prefix, int maxKeys) {
+        List<S3Object> objects = listObjects(bucketName, prefix, maxKeys);
+
+        ListBucketResult result = new ListBucketResult();
+        result.setName(bucketName);
+        result.setPrefix(prefix != null ? prefix : "");
+        result.setMaxKeys(maxKeys > 0 ? maxKeys : 1000);
+        result.setContents(objects);
+        result.setIsTruncated(false);
+
+        return result;
     }
 }
