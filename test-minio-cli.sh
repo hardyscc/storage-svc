@@ -209,25 +209,29 @@ mc rm --recursive --force $ALIAS_NAME/$TEST_BUCKET_1/
 mc rb $ALIAS_NAME/$TEST_BUCKET_1
 print_success "Bucket with contents deleted"
 
-print_step "20. Deleting empty bucket..."
+print_step "20. Cleaning up copied file from bucket 2..."
+mc rm $ALIAS_NAME/$TEST_BUCKET_2/copied-$TEST_FILE_1
+print_success "Copied file deleted from bucket 2"
+
+print_step "21. Deleting empty bucket..."
 mc rb $ALIAS_NAME/$TEST_BUCKET_2
 print_success "Empty bucket deleted"
 
-print_step "21. Final bucket list (should be empty or back to original state)..."
+print_step "22. Final bucket list (should be empty or back to original state)..."
 mc ls $ALIAS_NAME
 print_success "Final bucket list retrieved"
 
 echo
 echo -e "${BLUE}=== ERROR HANDLING TESTS ===${NC}"
 
-print_step "22. Testing operations on non-existent bucket..."
+print_step "23. Testing operations on non-existent bucket..."
 if mc ls $ALIAS_NAME/non-existent-bucket 2>/dev/null; then
     print_error "Non-existent bucket operation should have failed"
 else
     print_success "Non-existent bucket operation properly failed"
 fi
 
-print_step "23. Testing download of non-existent object..."
+print_step "24. Testing download of non-existent object..."
 if mc cp $ALIAS_NAME/non-existent-bucket/non-existent-file.txt ./downloaded-non-existent.txt 2>/dev/null; then
     print_error "Non-existent object download should have failed"
 else
@@ -237,10 +241,10 @@ fi
 echo
 echo -e "${BLUE}=== PERFORMANCE TEST ===${NC}"
 
-print_step "24. Creating bucket for performance test..."
+print_step "25. Creating bucket for performance test..."
 mc mb $ALIAS_NAME/perf-test
 
-print_step "25. Uploading multiple files..."
+print_step "26. Uploading multiple files..."
 for i in {1..10}; do
     echo "Performance test file $i content" > perf-test-$i.txt
     mc cp perf-test-$i.txt $ALIAS_NAME/perf-test/ &
@@ -248,11 +252,11 @@ done
 wait
 print_success "Multiple files uploaded concurrently"
 
-print_step "26. Listing all performance test files..."
+print_step "27. Listing all performance test files..."
 mc ls $ALIAS_NAME/perf-test
 print_success "Performance test files listed"
 
-print_step "27. Cleaning up performance test..."
+print_step "28. Cleaning up performance test..."
 mc rm --recursive --force $ALIAS_NAME/perf-test/
 mc rb $ALIAS_NAME/perf-test
 rm -f perf-test-*.txt
