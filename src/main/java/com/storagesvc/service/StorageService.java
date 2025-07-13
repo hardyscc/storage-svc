@@ -72,22 +72,8 @@ public class StorageService {
                 return false; // Bucket not empty
             }
 
-            // Try to delete the directory
-            boolean deleted = bucketDir.delete();
-            if (!deleted) {
-                // If normal deletion fails, try to ensure it's really empty and retry
-                try {
-                    Thread.sleep(100); // Brief pause for any file system timing issues
-                    removeEmptyDirectoriesRecursively(bucketDir);
-                    files = bucketDir.list();
-                    if (files == null || files.length == 0) {
-                        deleted = bucketDir.delete();
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-            return deleted;
+            // Delete the directory
+            return bucketDir.delete();
         }
         return false;
     }
