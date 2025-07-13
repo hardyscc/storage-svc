@@ -197,7 +197,7 @@ mc rm $ALIAS_NAME/$TEST_BUCKET_1/renamed-$TEST_FILE_2
 print_success "Individual objects deleted"
 
 print_step "17. Deleting objects recursively..."
-mc rm --recursive $ALIAS_NAME/$TEST_BUCKET_1/folder/
+mc rm --recursive --force $ALIAS_NAME/$TEST_BUCKET_1/folder/
 print_success "Nested objects deleted"
 
 print_step "18. Listing bucket after deletions..."
