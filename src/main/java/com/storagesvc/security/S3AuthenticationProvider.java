@@ -41,15 +41,8 @@ public class S3AuthenticationProvider implements AuthenticationProvider {
                         s3Auth.getSignedHeaders(),
                         s3Auth.getRequest());
 
-                // Validate timestamp to prevent replay attacks
-                boolean isValidTimestamp = signatureValidator.isTimestampValid(s3Auth.getTimestamp());
-
                 if (!isValidSignature) {
                     throw new BadCredentialsException("Signature does not match");
-                }
-
-                if (!isValidTimestamp) {
-                    throw new BadCredentialsException("Request timestamp is too old");
                 }
             }
 
