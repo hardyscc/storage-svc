@@ -75,6 +75,10 @@ public class S3AuthenticationFilter extends OncePerRequestFilter {
             String signedHeaders = matcher.group(6);
             String signature = matcher.group(7);
 
+            if (!"aws4_request".equals(requestType)) {
+                return null; // Invalid request type
+            }
+
             // Get timestamp from X-Amz-Date header or Date header
             String timestamp = request.getHeader("X-Amz-Date");
             if (timestamp == null) {
