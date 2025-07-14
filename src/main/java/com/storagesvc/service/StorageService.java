@@ -1,5 +1,6 @@
 package com.storagesvc.service;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -7,6 +8,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -189,6 +191,66 @@ public class StorageService {
         return new FileInputStream(objectFile);
     }
 
+    public InputStream getObject(String bucketName, String key, long offset, long length) throws IOException {
+        File objectFile = new File(storageConfig.getRootPath(), bucketName + "/" + key);
+        if (!objectFile.exists()) {
+            throw new FileNotFoundException("Object not found: " + key);
+        }
+
+        FileInputStream fis = new FileInputStream(objectFile);
+        if (offset > 0) {
+            long skipped = fis.skip(offset);
+            if (skipped != offset) {
+                fis.close();
+                throw new IOException("Failed to skip to offset: " + offset);
+            }
+        }
+
+        // Return a limited input stream that only reads the specified length
+        return new LimitedInputStream(fis, length);
+    }
+
+    // Helper class to limit the number of bytes read from an InputStream
+    private static class LimitedInputStream extends InputStream {
+        private final InputStream delegate;
+        private long remaining;
+
+        public LimitedInputStream(InputStream delegate, long maxBytes) {
+            this.delegate = delegate;
+            this.remaining = maxBytes;
+        }
+
+        @Override
+        public int read() throws IOException {
+            if (remaining <= 0) {
+                return -1;
+            }
+            int result = delegate.read();
+            if (result != -1) {
+                remaining--;
+            }
+            return result;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
+            if (remaining <= 0) {
+                return -1;
+            }
+            int toRead = (int) Math.min(len, remaining);
+            int result = delegate.read(b, off, toRead);
+            if (result > 0) {
+                remaining -= result;
+            }
+            return result;
+        }
+
+        @Override
+        public void close() throws IOException {
+            delegate.close();
+        }
+    }
+
     public boolean deleteObject(String bucketName, String key) {
         File objectFile = new File(storageConfig.getRootPath(), bucketName + "/" + key);
         return objectFile.exists() && objectFile.delete();
@@ -271,5 +333,155 @@ public class StorageService {
         result.setTruncated(false);
 
         return result;
+    }
+
+    // Multipart upload methods
+    public String initiateMultipartUpload(String bucketName, String key) {
+        File bucketDir = new File(storageConfig.getRootPath(), bucketName);
+        if (!bucketDir.exists()) {
+            throw new IllegalArgumentException("Bucket does not exist: " + bucketName);
+        }
+
+        // Generate a unique upload ID (in production, this should be more robust)
+        String uploadId = System.currentTimeMillis() + "-" + Math.random();
+
+        // Create multipart upload directory
+        File multipartDir = new File(bucketDir, ".multipart-uploads/" + uploadId);
+        multipartDir.mkdirs();
+
+        // Store metadata about the upload
+        File metadataFile = new File(multipartDir, "_metadata");
+        try (FileOutputStream fos = new FileOutputStream(metadataFile)) {
+            String metadata = "key=" + key + "\n" +
+                    "uploadId=" + uploadId + "\n" +
+                    "created=" + Instant.now().toString() + "\n";
+            fos.write(metadata.getBytes(StandardCharsets.UTF_8));
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to create multipart upload metadata", e);
+        }
+
+        return uploadId;
+    }
+
+    public String uploadPart(String bucketName, String key, String uploadId, int partNumber,
+            InputStream inputStream, long contentLength) throws IOException {
+        File bucketDir = new File(storageConfig.getRootPath(), bucketName);
+        File multipartDir = new File(bucketDir, ".multipart-uploads/" + uploadId);
+
+        if (!multipartDir.exists()) {
+            throw new IllegalArgumentException("Upload ID not found: " + uploadId);
+        }
+
+        File partFile = new File(multipartDir, "part-" + String.format("%05d", partNumber));
+
+        MessageDigest md5;
+        try {
+            md5 = MessageDigest.getInstance("MD5");
+        } catch (Exception e) {
+            throw new IOException("MD5 not available", e);
+        }
+
+        try (FileOutputStream fos = new FileOutputStream(partFile);
+                BufferedOutputStream bos = new BufferedOutputStream(fos)) {
+
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                bos.write(buffer, 0, bytesRead);
+                md5.update(buffer, 0, bytesRead);
+            }
+        }
+
+        byte[] digest = md5.digest();
+        StringBuilder etag = new StringBuilder();
+        for (byte b : digest) {
+            etag.append(String.format("%02x", b));
+        }
+
+        return "\"" + etag.toString() + "\"";
+    }
+
+    public String completeMultipartUpload(String bucketName, String key, String uploadId) throws IOException {
+        File bucketDir = new File(storageConfig.getRootPath(), bucketName);
+        File multipartDir = new File(bucketDir, ".multipart-uploads/" + uploadId);
+
+        if (!multipartDir.exists()) {
+            throw new IllegalArgumentException("Upload ID not found: " + uploadId);
+        }
+
+        // List all part files and sort them
+        File[] partFiles = multipartDir.listFiles((dir, name) -> name.startsWith("part-"));
+        if (partFiles == null || partFiles.length == 0) {
+            throw new IllegalArgumentException("No parts found for upload: " + uploadId);
+        }
+
+        // Sort parts by part number
+        Arrays.sort(partFiles, (a, b) -> {
+            String aNum = a.getName().substring(5); // Remove "part-" prefix
+            String bNum = b.getName().substring(5);
+            return Integer.compare(Integer.parseInt(aNum), Integer.parseInt(bNum));
+        });
+
+        // Create the final object file
+        File objectFile = new File(bucketDir, key);
+        objectFile.getParentFile().mkdirs();
+
+        MessageDigest md5;
+        try {
+            md5 = MessageDigest.getInstance("MD5");
+        } catch (Exception e) {
+            throw new IOException("MD5 not available", e);
+        }
+
+        // Combine all parts into the final file
+        try (FileOutputStream fos = new FileOutputStream(objectFile);
+                BufferedOutputStream bos = new BufferedOutputStream(fos)) {
+
+            for (File partFile : partFiles) {
+                try (FileInputStream fis = new FileInputStream(partFile);
+                        BufferedInputStream bis = new BufferedInputStream(fis)) {
+
+                    byte[] buffer = new byte[8192];
+                    int bytesRead;
+
+                    while ((bytesRead = bis.read(buffer)) != -1) {
+                        bos.write(buffer, 0, bytesRead);
+                        md5.update(buffer, 0, bytesRead);
+                    }
+                }
+            }
+        }
+
+        // Clean up multipart upload directory
+        for (File partFile : partFiles) {
+            partFile.delete();
+        }
+        new File(multipartDir, "_metadata").delete();
+        multipartDir.delete();
+
+        byte[] digest = md5.digest();
+        StringBuilder etag = new StringBuilder();
+        for (byte b : digest) {
+            etag.append(String.format("%02x", b));
+        }
+
+        return "\"" + etag.toString() + "\"";
+    }
+
+    public void abortMultipartUpload(String bucketName, String key, String uploadId) {
+        File bucketDir = new File(storageConfig.getRootPath(), bucketName);
+        File multipartDir = new File(bucketDir, ".multipart-uploads/" + uploadId);
+
+        if (multipartDir.exists()) {
+            // Clean up all part files
+            File[] partFiles = multipartDir.listFiles();
+            if (partFiles != null) {
+                for (File file : partFiles) {
+                    file.delete();
+                }
+            }
+            multipartDir.delete();
+        }
     }
 }
