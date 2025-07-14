@@ -1,20 +1,19 @@
 package com.storagesvc.security;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Component;
 
+import lombok.RequiredArgsConstructor;
+
 @Component
+@RequiredArgsConstructor
 public class S3AuthenticationProvider implements AuthenticationProvider {
 
-    @Autowired
-    private S3CredentialService credentialService;
-
-    @Autowired
-    private AwsSignatureValidator signatureValidator;
+    private final S3CredentialService credentialService;
+    private final AwsSignatureValidator signatureValidator;
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
