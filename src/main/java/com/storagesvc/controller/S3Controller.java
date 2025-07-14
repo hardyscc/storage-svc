@@ -30,6 +30,7 @@ import com.storagesvc.model.ListAllMyBucketsResult;
 import com.storagesvc.model.ListBucketResult;
 import com.storagesvc.model.S3Object;
 import com.storagesvc.service.StorageService;
+import com.storagesvc.util.ContentTypeDetector;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -42,6 +43,7 @@ import lombok.extern.slf4j.Slf4j;
 public class S3Controller {
 
     private final StorageService storageService;
+    private final ContentTypeDetector contentTypeDetector;
 
     @GetMapping(value = "/", produces = MediaType.APPLICATION_XML_VALUE)
     public ResponseEntity<ListAllMyBucketsResult> listBuckets() {
@@ -55,8 +57,9 @@ public class S3Controller {
 
     @PutMapping({ "/{bucketName}", "/{bucketName}/" })
     public ResponseEntity<Void> createBucket(@PathVariable String bucketName) {
+        // S3 bucket creation is idempotent - if bucket already exists, return success
         if (storageService.bucketExists(bucketName)) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            return ResponseEntity.ok().build();
         }
 
         boolean created = storageService.createBucket(bucketName);
@@ -93,6 +96,32 @@ public class S3Controller {
         result.setContents(objects);
 
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping(value = { "/{bucketName}",
+            "/{bucketName}/" }, params = "location", produces = MediaType.APPLICATION_XML_VALUE)
+    public ResponseEntity<String> getBucketLocation(@PathVariable String bucketName) {
+        if (!storageService.bucketExists(bucketName)) {
+            String errorXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+                    "<Error>\n" +
+                    "   <Code>NoSuchBucket</Code>\n" +
+                    "   <Message>The specified bucket does not exist</Message>\n" +
+                    "   <BucketName>" + bucketName + "</BucketName>\n" +
+                    "</Error>";
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .contentType(MediaType.APPLICATION_XML)
+                    .body(errorXml);
+        }
+
+        // Return a simple location configuration (us-east-1 is the default region)
+        String locationResponse = """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <LocationConstraint xmlns="http://s3.amazonaws.com/doc/2006-03-01/"/>
+                """;
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_XML)
+                .body(locationResponse);
     }
 
     @PutMapping("/{bucketName}/**")
@@ -147,6 +176,9 @@ public class S3Controller {
         long contentLength = storageService.getObjectSize(bucketName, key);
         Instant lastModified = storageService.getObjectLastModified(bucketName, key);
 
+        // Detect content type based on file extension
+        MediaType contentType = contentTypeDetector.detectContentType(key);
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentLength(contentLength);
         if (lastModified != null) {
@@ -155,7 +187,7 @@ public class S3Controller {
 
         return ResponseEntity.ok()
                 .headers(headers)
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentType(contentType)
                 .body(new InputStreamResource(inputStream));
     }
 
@@ -170,8 +202,9 @@ public class S3Controller {
             return ResponseEntity.notFound().build();
         }
 
-        boolean deleted = storageService.deleteObject(bucketName, key);
-        return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+        // S3 DELETE operations are idempotent - always return success regardless of whether object existed
+        storageService.deleteObject(bucketName, key);
+        return ResponseEntity.noContent().build();
     }
 
     @RequestMapping(value = "/{bucketName}/**", method = RequestMethod.HEAD)
@@ -192,8 +225,12 @@ public class S3Controller {
         long contentLength = storageService.getObjectSize(bucketName, key);
         Instant lastModified = storageService.getObjectLastModified(bucketName, key);
 
+        // Detect content type based on file extension
+        MediaType contentType = contentTypeDetector.detectContentType(key);
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentLength(contentLength);
+        headers.setContentType(contentType);
         if (lastModified != null) {
             headers.setLastModified(lastModified);
         }
@@ -321,9 +358,11 @@ public class S3Controller {
             headers.set("x-amz-copy-source-version-id", "null"); // We don't support versioning
 
             // Set copy result in response body (S3 returns XML with copy result)
+            // Format timestamp to be S3-compatible (without nanoseconds)
+            String timestamp = Instant.now().toString().replaceAll("\\.[0-9]+Z", "Z");
             String copyResultXml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
                     "<CopyObjectResult>\n" +
-                    "   <LastModified>" + Instant.now().toString() + "</LastModified>\n" +
+                    "   <LastModified>" + timestamp + "</LastModified>\n" +
                     "   <ETag>" + etag + "</ETag>\n" +
                     "</CopyObjectResult>";
 
