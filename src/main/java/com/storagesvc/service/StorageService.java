@@ -27,13 +27,17 @@ import com.storagesvc.model.ListBucketResult;
 import com.storagesvc.model.S3Object;
 import com.storagesvc.util.ChunkedTransferDecoder;
 
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+
 @Service
+@RequiredArgsConstructor
 public class StorageService {
 
     private final StorageConfig storageConfig;
 
-    public StorageService(StorageConfig storageConfig) {
-        this.storageConfig = storageConfig;
+    @PostConstruct
+    private void init() {
         this.storageConfig.ensureDirectoriesExist();
     }
 
@@ -264,7 +268,7 @@ public class StorageService {
         result.setPrefix(prefix != null ? prefix : "");
         result.setMaxKeys(maxKeys > 0 ? maxKeys : 1000);
         result.setContents(objects);
-        result.setIsTruncated(false);
+        result.setTruncated(false);
 
         return result;
     }

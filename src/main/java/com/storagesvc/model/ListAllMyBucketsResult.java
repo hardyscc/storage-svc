@@ -6,7 +6,11 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 @JacksonXmlRootElement(localName = "ListAllMyBucketsResult")
+@Data
 public class ListAllMyBucketsResult {
 
     @JacksonXmlProperty(localName = "Owner")
@@ -20,57 +24,21 @@ public class ListAllMyBucketsResult {
         this.buckets = new BucketList();
     }
 
-    public Owner getOwner() {
-        return owner;
-    }
-
-    public void setOwner(Owner owner) {
-        this.owner = owner;
-    }
-
-    public BucketList getBuckets() {
-        return buckets;
-    }
-
-    public void setBuckets(BucketList buckets) {
-        this.buckets = buckets;
-    }
-
+    @Data
+    @NoArgsConstructor
     public static class Owner {
         @JacksonXmlProperty(localName = "ID")
         private String id = "minioadmin";
 
         @JacksonXmlProperty(localName = "DisplayName")
         private String displayName = "minioadmin";
-
-        public String getId() {
-            return id;
-        }
-
-        public void setId(String id) {
-            this.id = id;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
-
-        public void setDisplayName(String displayName) {
-            this.displayName = displayName;
-        }
     }
 
+    @Data
+    @NoArgsConstructor
     public static class BucketList {
         @JacksonXmlProperty(localName = "Bucket")
         @JacksonXmlElementWrapper(useWrapping = false)
         private List<Bucket> bucket;
-
-        public List<Bucket> getBucket() {
-            return bucket;
-        }
-
-        public void setBucket(List<Bucket> bucket) {
-            this.bucket = bucket;
-        }
     }
 }

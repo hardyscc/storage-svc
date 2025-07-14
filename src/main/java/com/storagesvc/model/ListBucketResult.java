@@ -6,7 +6,12 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlElementWrapper;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 @JacksonXmlRootElement(localName = "ListBucketResult", namespace = "http://s3.amazonaws.com/doc/2006-03-01/")
+@Data
+@NoArgsConstructor
 public class ListBucketResult {
 
     @JacksonXmlProperty(localName = "Name")
@@ -27,56 +32,4 @@ public class ListBucketResult {
     @JacksonXmlProperty(localName = "Contents")
     @JacksonXmlElementWrapper(useWrapping = false)
     private List<S3Object> contents;
-
-    public ListBucketResult() {
-    }
-
-    // Getters and setters
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getPrefix() {
-        return prefix;
-    }
-
-    public void setPrefix(String prefix) {
-        this.prefix = prefix;
-    }
-
-    public String getMarker() {
-        return marker;
-    }
-
-    public void setMarker(String marker) {
-        this.marker = marker;
-    }
-
-    public int getMaxKeys() {
-        return maxKeys;
-    }
-
-    public void setMaxKeys(int maxKeys) {
-        this.maxKeys = maxKeys;
-    }
-
-    public boolean isIsTruncated() {
-        return isTruncated;
-    }
-
-    public void setIsTruncated(boolean isTruncated) {
-        this.isTruncated = isTruncated;
-    }
-
-    public List<S3Object> getContents() {
-        return contents;
-    }
-
-    public void setContents(List<S3Object> contents) {
-        this.contents = contents;
-    }
 }

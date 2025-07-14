@@ -6,8 +6,6 @@ import java.io.InputStream;
 import java.time.Instant;
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -35,16 +33,15 @@ import com.storagesvc.service.StorageService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
+@RequiredArgsConstructor
+@Slf4j
 public class S3Controller {
 
-    private static final Logger logger = LoggerFactory.getLogger(S3Controller.class);
     private final StorageService storageService;
-
-    public S3Controller(StorageService storageService) {
-        this.storageService = storageService;
-    }
 
     @GetMapping(value = "/", produces = MediaType.APPLICATION_XML_VALUE)
     public ResponseEntity<ListAllMyBucketsResult> listBuckets() {
@@ -92,7 +89,7 @@ public class S3Controller {
         result.setName(bucketName);
         result.setPrefix(prefix);
         result.setMaxKeys(maxKeys);
-        result.setIsTruncated(false);
+        result.setTruncated(false);
         result.setContents(objects);
 
         return ResponseEntity.ok(result);
@@ -231,7 +228,7 @@ public class S3Controller {
             DeleteResult deleteResult = storageService.deleteObjects(bucketName, deleteRequest);
             return ResponseEntity.ok(deleteResult);
         } catch (Exception e) {
-            logger.error("Failed to parse delete request", e);
+            log.error("Failed to parse delete request", e);
             return ResponseEntity.badRequest().build();
         }
     }
@@ -261,7 +258,7 @@ public class S3Controller {
             HttpServletRequest request,
             HttpServletResponse response) throws IOException {
 
-        logger.debug("Handling copy operation: source={}, dest={}/{}", copySource, destBucketName, destKey);
+        log.debug("Handling copy operation: source={}, dest={}/{}", copySource, destBucketName, destKey);
 
         // Parse the copy source header (format: /bucket/key or /bucket/key with URL encoding)
         if (copySource.startsWith("/")) {
@@ -272,36 +269,36 @@ public class S3Controller {
         try {
             copySource = java.net.URLDecoder.decode(copySource, "UTF-8");
         } catch (Exception e) {
-            logger.warn("Failed to URL decode copy source: {}", copySource, e);
+            log.warn("Failed to URL decode copy source: {}", copySource, e);
             return ResponseEntity.badRequest().build();
         }
 
         // Extract source bucket and key
         int firstSlash = copySource.indexOf('/');
         if (firstSlash == -1) {
-            logger.warn("Invalid copy source format: {}", copySource);
+            log.warn("Invalid copy source format: {}", copySource);
             return ResponseEntity.badRequest().build();
         }
 
         String sourceBucketName = copySource.substring(0, firstSlash);
         String sourceKey = copySource.substring(firstSlash + 1);
 
-        logger.debug("Parsed copy source: bucket={}, key={}", sourceBucketName, sourceKey);
+        log.debug("Parsed copy source: bucket={}, key={}", sourceBucketName, sourceKey);
 
         // Validate source bucket and object exist
         if (!storageService.bucketExists(sourceBucketName)) {
-            logger.warn("Source bucket does not exist: {}", sourceBucketName);
+            log.warn("Source bucket does not exist: {}", sourceBucketName);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
         if (!storageService.objectExists(sourceBucketName, sourceKey)) {
-            logger.warn("Source object does not exist: {}/{}", sourceBucketName, sourceKey);
+            log.warn("Source object does not exist: {}/{}", sourceBucketName, sourceKey);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
         // Validate destination bucket exists
         if (!storageService.bucketExists(destBucketName)) {
-            logger.warn("Destination bucket does not exist: {}", destBucketName);
+            log.warn("Destination bucket does not exist: {}", destBucketName);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 
@@ -334,13 +331,13 @@ public class S3Controller {
             response.getWriter().write(copyResultXml);
             response.getWriter().flush();
 
-            logger.debug("Copy operation completed successfully: {}/{} -> {}/{}",
+            log.debug("Copy operation completed successfully: {}/{} -> {}/{}",
                     sourceBucketName, sourceKey, destBucketName, destKey);
 
             return ResponseEntity.ok().headers(headers).build();
 
         } catch (Exception e) {
-            logger.error("Copy operation failed: {}/{} -> {}/{}",
+            log.error("Copy operation failed: {}/{} -> {}/{}",
                     sourceBucketName, sourceKey, destBucketName, destKey, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
