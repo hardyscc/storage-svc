@@ -3,8 +3,6 @@ package com.storagesvc.security;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Instant;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -204,31 +202,5 @@ public class AwsSignatureValidator {
             result |= a.charAt(i) ^ b.charAt(i);
         }
         return result == 0;
-    }
-
-    public boolean isTimestampValid(String timestamp) {
-        try {
-            if (timestamp == null) {
-                return false;
-            }
-
-            // Parse the timestamp (format: 20231213T123456Z)
-            Instant requestTime = Instant.from(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").parse(timestamp));
-            Instant now = Instant.now();
-
-            // Allow requests within 15 minutes of current time (AWS standard)
-            long timeDifferenceSeconds = Math.abs(now.getEpochSecond() - requestTime.getEpochSecond());
-            return timeDifferenceSeconds <= 900; // 15 minutes
-        } catch (Exception e) {
-            // Try parsing ISO format as fallback
-            try {
-                Instant requestTime = Instant.parse(timestamp);
-                Instant now = Instant.now();
-                long timeDifferenceSeconds = Math.abs(now.getEpochSecond() - requestTime.getEpochSecond());
-                return timeDifferenceSeconds <= 900; // 15 minutes
-            } catch (Exception ex) {
-                return false;
-            }
-        }
     }
 }
