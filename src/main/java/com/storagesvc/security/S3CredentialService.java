@@ -9,6 +9,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
+
 @Service
 public class S3CredentialService {
 
@@ -18,11 +20,16 @@ public class S3CredentialService {
     @Value("${s3.timestamp.tolerance.seconds:900}")
     private long timestampToleranceSeconds;
 
-    public S3CredentialService() {
-        // Initialize with default credentials (same as MinIO default)
-        credentials.put("minioadmin", "minioadmin");
-        // You can add more users here
-        credentials.put("testuser", "testpassword");
+    @Value("${app.access-key}")
+    private String appAccessKey;
+
+    @Value("${app.secret-key}")
+    private String appSecretKey;
+
+    @PostConstruct
+    public void initializeCredentials() {
+        // Initialize with credentials from configuration
+        credentials.put(appAccessKey, appSecretKey);
     }
 
     public String getSecretKey(String accessKey) {

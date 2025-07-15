@@ -74,6 +74,9 @@ class S3CredentialServiceTest {
 
     @Test
     void testUserManagement() {
+        // Add test credentials since we no longer have hardcoded ones
+        credentialService.addUser("minioadmin", "minioadmin");
+
         // Test existing functionality still works
         assertTrue(credentialService.userExists("minioadmin"));
         assertEquals("minioadmin", credentialService.getSecretKey("minioadmin"));
